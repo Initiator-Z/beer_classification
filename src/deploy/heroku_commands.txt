@@ -1,0 +1,11 @@
+heroku login
+
+heroku create
+
+heroku stack:set container
+
+git push heroku master
+
+https://shrouded-woodland-85777-a5922b06e48f.herokuapp.com/health
+
+https://shrouded-woodland-85777-a5922b06e48f.herokuapp.com/beer/type?review_time=1&review_overall=4&review_aroma=3&review_appearance=3&review_palate=3.5&review_taste=4&beer_abv=6.5

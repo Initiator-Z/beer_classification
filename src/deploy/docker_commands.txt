@@ -5,8 +5,3 @@ docker run -dit --rm --name adv_dsi_at2_beer_fastapi -p 8080:80 beer-fastapi:lat
 docker stop adv_dsi_at2_beer_fastapi
 
 http://localhost:8080/beer/type?review_time=1&review_overall=4&review_aroma=3&review_appearance=3&review_palate=3.5&review_taste=4&beer_abv=6.5
-
-heroku login
-
-heroku create
-

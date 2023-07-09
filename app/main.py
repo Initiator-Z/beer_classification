@@ -6,7 +6,7 @@ from joblib import load
 app = FastAPI()
 
 # load model
-model = load_model('../models/model.h5', compile = True)
+model = load_model('../models/model.h5')
 # load map for labels
 label_map = load('../models/label_map')
 

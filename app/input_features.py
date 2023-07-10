@@ -14,4 +14,4 @@ class Inputs(BaseModel):
     input_list: List[Input]
 
     def dict_inputs(self):
-        return [input.model_dump() for input in self.input_list]
+        return [input.dict() for input in self.input_list]

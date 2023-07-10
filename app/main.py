@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from starlette.responses import JSONResponse
 from keras.models import load_model
 from joblib import load
-from src.deploy import Input, Inputs
+from input_features import Input, Inputs
 
 app = FastAPI()
 
@@ -11,7 +11,7 @@ model = load_model('../models/model.h5')
 # load map for labels
 label_map = load('../models/label_map')
 # define features
-features = Input.model_json_schema()['properties']
+features = Input.schema()['properties']
 
 @app.get('/')
 def read_root():
@@ -46,15 +46,15 @@ def predict(feature_array):
     # run prediction
     preds = model.predict(feature_array)
     # return predicted type
-    index_array = np.argmax(preds)
-    pred_type = [label_map[index] for index in index_array]
+    index_array = np.argmax(preds, axis=1)
+    pred_type = np.vectorize(label_map.get)(index_array).tolist()
     return pred_type
 
 @app.post("/beer/type")
 def predict_single(input: Input):
     import numpy as np
     # prepare features
-    features = input.model_dump()
+    features = input.dict()
     feature_array = np.array(list(features.values())).reshape(1, -1)
     # predict
     prediction = predict(feature_array)

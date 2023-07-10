@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from starlette.responses import JSONResponse
 from keras.models import load_model
 from joblib import load
-from src.deploy import Inputs
+from src.deploy import Input, Inputs
 
 app = FastAPI()
 
@@ -11,7 +11,7 @@ model = load_model('../models/model.h5')
 # load map for labels
 label_map = load('../models/label_map')
 # define features
-
+features = Input.model_json_schema()['properties']
 
 @app.get('/')
 def read_root():
@@ -41,39 +41,30 @@ def health_check():
 def model_summary():
     return model.summary()
 
-def format_features(review_time: int, review_overall: float, review_aroma: float, review_appearance: float, review_palate: float, review_taste: float, beer_abv: float):
-    return {'Review time': [review_time],
-            'Review overall': [review_overall],
-            'Review aroma': [review_aroma],
-            'Review appearance': [review_appearance],
-            'Review palate': [review_palate],
-            'Review taste': [review_taste],
-            'Alcohol by volume': [beer_abv]
-            }
+def predict(feature_array):
+    import numpy as np
+    # run prediction
+    preds = model.predict(feature_array)
+    # return predicted type
+    index_array = np.argmax(preds)
+    pred_type = [label_map[index] for index in index_array]
+    return pred_type
 
 @app.post("/beer/type")
-def predict(review_time: int, review_overall: float, review_aroma: float, review_appearance: float, review_palate: float, review_taste: float, beer_abv: float):
+def predict_single(input: Input):
     import numpy as np
-    
     # prepare features
-    features = format_features(review_time, review_overall, review_aroma, review_appearance, review_palate, review_taste, beer_abv)
-    input = np.array(list(features.values())).reshape(1, -1)
-
-    # run prediction
-    preds = model.predict(input)
-
-    # return predicted type
-    pred_index = np.argmax(preds[0])
-    pred_type = label_map[pred_index]
-
-    return JSONResponse(pred_type)
+    features = input.model_dump()
+    feature_array = np.array(list(features.values())).reshape(1, -1)
+    # predict
+    prediction = predict(feature_array)
+    return JSONResponse(prediction[0])
 
 @app.post("/beers/type")
-async def predict_batch(inputs: Inputs):
+def predict_batch(inputs: Inputs):
     import pandas as pd
-    # Create a dataframe from inputs
-    data = pd.DataFrame(inputs.return_dict_inputs())
-    data_copy = data.copy() # Create a copy of the data
-    labels, probs = make_prediction(data, transformer, model) # Get the labels
-    response = output_batch(data, labels) # output results
-    return response
+    # prepare features
+    feature_df = pd.DataFrame(inputs.dict_inputs())
+    # predict
+    predictions = predict(feature_df) 
+    return JSONResponse(predictions)

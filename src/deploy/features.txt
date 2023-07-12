@@ -1,0 +1,3 @@
+'brewery_name', 'review_overall', 'review_aroma', 'review_appearance',
+       'review_profilename', 'review_palate', 'review_taste', 'beer_abv',
+       'review_year', 'review_month'

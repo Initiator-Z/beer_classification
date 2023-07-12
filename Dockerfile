@@ -1,6 +1,4 @@
 FROM tiangolo/uvicorn-gunicorn-fastapi:python3.9
-RUN pip install --upgrade pip
-RUN export PIP_CACHE_DIR=/new_dir/
 COPY requirements.txt .
 RUN pip3 install -r requirements.txt
 COPY ./app /app

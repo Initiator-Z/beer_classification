@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, PlainTextResponse
 from joblib import load
 import pandas as pd
 from input_features import Input, Inputs
@@ -14,9 +14,9 @@ model = load_pytorch_model('../models/pytorch_model.pth', device)
 # load map for labels
 label_map = load('../models/label_map')
 # load preprocesser
-preprocessor = load('../models/preprocesser')
+preprocessor = load('../models/preprocessor')
 # define features
-features = Input.schema()['properties']
+input_features = Input.schema()['properties']
 
 def prepare_features(df):
     from torch.utils.data import DataLoader
@@ -42,29 +42,58 @@ def predict(data_loader):
         dims = len(outputs.shape)
         # get predicted classes
         _, predicted = torch.max(outputs.data, dims-1)
-        index_array = predicted.numpy()
+        index_array = predicted.cpu().numpy()
         prediction = np.vectorize(label_map.get)(index_array).tolist()
     return prediction
 
 @app.get('/')
 def read_root():
-    endpoints = '''
-                "/health/" (GET): Returns status code 200 with a welcome message.
-                "/beer/type/" (POST): Makes a prediction for a single input.
-                "/beers/type/" (POST): Makes a batch prediction on a provided CSV file of inputs.
-                "/model/architecture/" (GET): Lists the neural network model architecture. \n
-                '''
-    input_parameters =  f'''
-                        The following features are required to be provided to the prediction endpoints. 
-                        Provide these features as query parameters to "/beer/type" and as columns of the CSV to "/beers/type" with the parameters as headings.
-                        {features}
-                        '''
-    return JSONResponse({'Project objectives': 'This API uses a neural network trained on the BeerAdvocates dataset to predict the type of beer using review rating criterias.\n',
-             'List of endpoints': endpoints,
-             'Input parameters': input_parameters,
-             'Output format': '"/beer/type/" returns a string of the predicted beer type. \n "/beers/type/" returns a CSV file with the predicted beer types included as a new column.\n',
-             'Github repo': 'https://github.com/Initiator-Z/beer_classification'
-            })
+    endpoints = '''"/health/" (GET): Returns status code 200 with a welcome message.
+        "/beer/type/" (POST): Makes a prediction for a single input.
+        "/beers/type/" (POST): Makes a batch prediction on a provided CSV file of inputs.
+        "/model/architecture/" (GET): Lists the neural network model architecture.'''
+
+    input_features = """{'title': 'Brewery Name',
+        'description': 'Name of the brewery',
+        'type': 'string'},
+        {'title': 'Review Overall',
+        'description': 'Overall review score, scored out of 5',
+        'type': 'number'},
+        {'title': 'Review Aroma',
+        'description': 'Aroma review score, scored out of 5',
+        'type': 'number'},
+        {'title': 'Review Appearance',
+        'description': 'Appearance review score, scored out of 5',
+        'type': 'number'},
+        {'title': 'Review Profilename',
+        'description': 'Profile name of the reviewer',
+        'type': 'string'},
+        {'title': 'Review Palate',
+        'description': 'Palate review score, scored out of 5',
+        'type': 'number'},
+        {'title': 'Review Taste',
+        'description': 'Taste review score, scored out of 5',
+        'type': 'number'},
+        {'title': 'Beer Abv', 'description': 'Alcohol by volume', 'type': 'number'},
+        {'title': 'Review Year',
+        'description': 'Year the beer was reviewed, as integer',
+        'type': 'integer'},
+        {'title': 'Review Month',
+        'description': 'Month the beer was reviewed, as integer',
+        'type': 'integer'}"""
+
+    return PlainTextResponse(f'''Project objectives: This API uses a neural network trained on the BeerAdvocates dataset to predict the type of beer using review rating criterias.
+List of endpoints:
+        {endpoints}
+Input parameters:
+        The following features are required to be provided to the prediction endpoints.
+        Provide these features as query parameters to "/beer/type" and as columns of the CSV to "/beers/type" with the parameters as headings.
+        {input_features}
+Output formats: 
+        "/beer/type/" returns a string of the predicted beer type. 
+        "/beers/type/" returns a CSV file with the predicted beer types included as a new column.
+Github repo: "https://github.com/Initiator-Z/beer_classification"''')
+                        
 
 @app.get('/health', status_code=200)
 def health_check():
@@ -72,7 +101,8 @@ def health_check():
 
 @app.get('/model/architecture')
 def model_summary():
-    return JSONResponse(model.summary())
+    layers = str([module for module in model.modules()])
+    return PlainTextResponse(layers)
 
 @app.post("/beer/type")
 def predict_single(input: Input):
